@@ -1,7 +1,7 @@
 import pandas as pd
 import xgboost as xgb
 import mlflow
-import mlflow.sklearn
+import mlflow.xgboost
 import os
 import logging
 from azure.identity import DefaultAzureCredential
@@ -42,7 +42,7 @@ def registra_mlflow_azure(model, score, experiment_name="inadimplencia-xgb", tag
         mlflow.log_metric("test_score", score)
         if tags:
             mlflow.set_tags(tags)
-        mlflow.sklearn.log_model(model, "model")
+        mlflow.xgboost.log_model(model, "model")
 
 if __name__ == "__main__":
     # Caso use Azure ML para autenticação (opcional, ajuste para seu ambiente)
@@ -54,3 +54,4 @@ if __name__ == "__main__":
     registra_mlflow_azure(model, score, experiment_name="inadimplencia-xgb")
 
     logging.info("Pipeline de modelagem e registro concluído!")
+
