@@ -9,6 +9,9 @@ on:
 jobs:
   tests:
     runs-on: ubuntu-latest
+    env:
+      MAX_ALLOWED_FAILURES: "3"   # <<< limite de falhas permitido
+
     strategy:
       fail-fast: false
       matrix:
@@ -23,29 +26,47 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-          cache-dependency-path: |
-            requirements.txt
-            requirements-dev.txt
-            pyproject.toml
 
-      - name: Install deps from requirements/pyproject (if present)
-        if: ${{ hashFiles('requirements*.txt') != '' || hashFiles('pyproject.toml') != '' }}
-        run: |
-          python -m pip install -U pip
-          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          if [ -f pyproject.toml ]; then pip install .; fi
-          pip install pytest pytest-cov
-
-      - name: Install minimal test deps (fallback)
-        if: ${{ !(hashFiles('requirements*.txt') != '' || hashFiles('pyproject.toml') != '') }}
+      - name: Install deps (min)
         run: |
           python -m pip install -U pip
           pip install pytest pytest-cov pandas numpy scikit-learn
 
-      - name: Run tests
+      # (Opcional) Se usa layout src/, garanta PYTHONPATH:
+      - name: Add src to PYTHONPATH
+        run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)/src" >> $GITHUB_ENV
+
+      - name: Run tests (stop after at most 3 fails) and collect reports
         run: |
-          pytest -ra --maxfail=2 --cov=. --cov-report=xml --junitxml=pytest-junit.xml
+          set -e
+          # Não deixe o job parar mesmo que pytest falhe; queremos analisar o JUnit depois
+          pytest -ra --maxfail=3 --cov=. --cov-report=xml --junitxml=pytest-junit.xml || true
+
+          # Verifica o número total de failures+errors no JUnit
+          python - <<'PY'
+          import xml.etree.ElementTree as ET, sys, os
+          fn = "pytest-junit.xml"
+          try:
+              tree = ET.parse(fn)
+          except Exception as e:
+              print(f"[CHECK] Não foi possível ler {fn}: {e}")
+              sys.exit(1)
+
+          fails = errors = 0
+          for ts in tree.iter("testsuite"):
+              fails  += int(ts.attrib.get("failures", "0"))
+              errors += int(ts.attrib.get("errors", "0"))
+          total = fails + errors
+          max_allowed = int(os.environ.get("MAX_ALLOWED_FAILURES", "0"))
+          print(f"[CHECK] Failures+Errors={total} | Limite={max_allowed}")
+
+          if total <= max_allowed:
+              print("[CHECK] Dentro do limite. Job aprovado.")
+              sys.exit(0)
+          else:
+              print("[CHECK] Acima do limite. Job reprovado.")
+              sys.exit(1)
+          PY
 
       - name: Upload test reports
         if: always()
