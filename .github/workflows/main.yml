@@ -45,7 +45,7 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest -ra --maxfail=1 --cov=. --cov-report=xml --junitxml=pytest-junit.xml
+          pytest -ra --maxfail=2 --cov=. --cov-report=xml --junitxml=pytest-junit.xml
 
       - name: Upload test reports
         if: always()
