@@ -1,0 +1,49 @@
+# scoring_job.yaml
+name: job-scoring-model-version6
+display_name: Scoring do ModelRFC
+experiment_name: inadimplencia-rfc
+
+$schema: https://azuremlschemas.azureedge.net/latest/commandJob.schema.json
+type: command
+code: .
+environment: azureml://registries/azureml/environments/sklearn-1.5/labels/latest
+compute: azureml:cluster-alura
+
+inputs:
+  input_csv:
+    type: uri_file
+    path: azureml://subscriptions/0b97f8d7-e740-4d8a-be3c-96eea4182bf8/resourcegroups/AulasAlura/workspaces/DS-Workspace/datastores/workspaceblobstore/paths/UI/2025-09-05_102649_UTC/base_clientes_inadimplencia_2.csv
+
+  # Modelo registrado como ASSET (forma robusta p/ jobs)
+  model_asset:
+    type: mlflow_model
+    path: azureml:ModelRFC1:1 
+
+  # Parâmetros simples
+  id_cols: "ID_Cliente"
+  output_prefix: "predicoes_inadimplencia"
+
+outputs:
+  prep_output:
+    type: uri_folder
+    mode: upload
+
+command: >-
+  python -m pip install --no-cache-dir -r requirements.txt &&
+  python pre_processamento_job.py
+  --input-csv ${{inputs.input_csv}}
+  --output-dir ${{outputs.prep_output}}
+  --target Status_Pagamento
+  --date-cols Data_Contratacao Data_Vencimento_Fatura Data_Ingestao Data_Atualizacao
+  --drop-cols Telefone Nome Email Data_Nascimento Data_Contratacao Data_Vencimento_Fatura Data_Ingestao Data_Atualizacao
+  &&
+  python scoring_model_final.py
+  --model-name ModelRFC1
+  --model-version 1
+  --input-csv ${{outputs.prep_output}}/df_transformado.csv
+  --id-cols ${{inputs.id_cols}}
+  --output-prefix ${{inputs.output_prefix}}
+  --upload-output true
+
+
+

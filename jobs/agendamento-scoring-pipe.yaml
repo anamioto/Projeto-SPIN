@@ -1,0 +1,15 @@
+$schema: https://azuremlschemas.azureedge.net/latest/schedule.schema.json
+name: agendamento-inadimplencia-diario-10brt
+display_name: Scoring diário (10:00 BRT)
+description: Executa o pipeline de pré-processamento + scoring todos os dias às 10:00 no horário de Brasília.
+
+trigger:
+  type: cron
+  expression: "0 10 * * *"         # MIN HORA DIA MÊS DIA-SEMANA
+  start_time: "2025-09-16T10:00:00"
+  time_zone: "E. South America Standard Time"
+
+create_job:
+  type: pipeline
+  job: ./pipeline.yml
+

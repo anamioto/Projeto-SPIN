@@ -1,0 +1,72 @@
+# pipeline.yml
+$schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
+type: pipeline
+name: pipeline-inadimplencia-scoring-v1
+display_name: Pipeline Scoring Inadimplência (pré → score)
+experiment_name: inadimplencia-rfc
+description: "Pipeline de 2 etapas: pré-processa CSV e gera predições com modelo registrado."
+
+settings:
+  default_compute: azureml:cluster-alura         # seu cluster
+  default_datastore: azureml:workspaceblobstore  # onde inputs/outputs ficam por padrão
+
+# ----- ENTRADA E SAÍDA DO PIPELINE (nível superior) -----
+inputs:
+  raw_csv:                                       # CSV bruto de entrada
+    type: uri_file
+    # ajuste o caminho abaixo p/ seu arquivo/dataset:
+    # ex.: azureml data asset: azureml:<data_asset_name>:<version>
+    # ou caminho do blobstore:
+    path: azureml://subscriptions/0b97f8d7-e740-4d8a-be3c-96eea4182bf8/resourcegroups/AulasAlura/workspaces/DS-Workspace/datastores/workspaceblobstore/paths/UI/2025-09-05_102649_UTC/base_clientes_inadimplencia_2.csv
+
+outputs:
+  predictions:                                   # promovemos a saída final pro topo do pipeline
+    type: uri_folder
+    mode: upload
+
+# ----- ETAPAS -----
+jobs:
+
+  pre_processamento:
+    type: command
+    display_name: Pré-processamento
+    code: .                                      # raiz do repo onde estão os scripts
+    environment: azureml://registries/azureml/environments/sklearn-1.5/labels/latest
+    compute: azureml:cluster-alura
+    inputs:
+      input_csv: ${{parent.inputs.raw_csv}}      # linca o input do pipeline a este job
+    outputs:
+      prep_output:                               # pasta onde o script grava df_transformado.csv
+        type: uri_folder
+        mode: rw_mount
+    command: >-
+      python pre_processamento_job.py
+      --input-csv ${{inputs.input_csv}}
+      --output-dir ${{outputs.prep_output}}
+      --id-col ID_Cliente
+
+  scoring:
+    type: command
+    display_name: Scoring do modelo
+    code: .
+    environment: azureml://registries/azureml/environments/sklearn-1.5/labels/latest
+    compute: azureml:cluster-alura
+    inputs:
+      prepped_dir: ${{parent.jobs.pre_processamento.outputs.prep_output}}
+    outputs:
+      scored_dir: ${{parent.outputs.predictions}}   # mapeia saída do job para a saída do pipeline
+    command: |
+      # Esses pacotes são necessários porque o seu script importa azure-ai-ml/azure-identity/mlflow.
+      python -m pip install --no-cache-dir --upgrade mlflow azure-ai-ml azure-identity pandas numpy
+
+      # Executa o scoring consumindo o CSV gerado no pré-processamento
+      python scoring_model_final.py \
+        --model-name ModelRFC1 \
+        --model-version 1 \
+        --input-csv ${{inputs.prepped_dir}}/df_transformado.csv \
+        --id-cols ID_Cliente \
+        --output-prefix predicoes_inadimplencia \
+        --upload-output false
+
+      # Copia o arquivo mais recente de predição para a pasta de saída capturada pelo AML
+      cp -f $(ls -t predicoes_inadimplencia_*.csv | head -n 1) ${{outputs.scored_dir}}/predicoes.csv
