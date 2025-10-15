@@ -3,7 +3,7 @@
 ## 📋 Visão Geral
 
 O Projeto SPIN (Sistema de Predição de Inadimplência) é uma solução completa de Machine Learning operacionalizada em ambiente de produção, voltada à predição da probabilidade de inadimplência de um serviço de assinaturas.
-O projeto foi desenvolvido utilizando Python, PySpark, MLflow, Azure Machine Learning e GitHub Actions, seguindo as diretrizes de MLOps, observabilidade e boas práticas de engenharia de software para ciência de dados. 
+O projeto foi desenvolvido utilizando Python, MLflow, Azure Machine Learning e GitHub Actions, seguindo as diretrizes de MLOps, observabilidade e boas práticas de engenharia de software para ciência de dados. 
 
 > Esta é uma **PROPOSTA DE DOCUMENTAÇÃO**, como parte do curso da Alura de **MLOps: implantação de modelos com automação e monitoramento**.
 >> Fique a vontade para clonar, fazer as modificações necessárias e aplicar as **boas práticas em seus projetos**.
