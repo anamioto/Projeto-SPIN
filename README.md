@@ -59,6 +59,7 @@ projeto-CHURN/
 - ...
 
 ### Ferramentas de Desenvolvimento
+- **Azure Machine Learning**: Serviço de nuvem que acelera e gerencia o ciclo de vida do projeto de aprendizado de máquina (ML)
 - **Jupyter Notebook**: Desenvolvimento interativo
 - **Git**: Controle de versão
 - **Pip**: Gerenciamento de dependências
